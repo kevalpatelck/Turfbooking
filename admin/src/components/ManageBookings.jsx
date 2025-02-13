@@ -1,34 +1,93 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 
 function ManageBookings() {
-  const [bookings, setBookings] = useState([
-    { id: "1", user_id: "U101", tuf_id: "T001", date: "2025-02-01", time_slot: "10:00 AM - 11:00 AM", confirmed: false },
-    { id: "2", user_id: "U102", tuf_id: "T002", date: "2025-02-02", time_slot: "11:00 AM - 12:00 PM", confirmed: false },
-  ]);
+  const [bookings, setBookings] = useState([]);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const fetchBookings = async () => {
+    const adminToken = localStorage.getItem("adminToken");
+    if (!adminToken) {
+      setMessage("Admin token is missing. Please log in again.");
+      return;
+    }
+
+    try {
+      const response = await axios.get("http://localhost:3000/api/admin/get-bookings", {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+
+      setBookings(response.data.bookings);
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+      setMessage(error.response?.data?.message || "Error fetching bookings.");
+    }
+  };
 
   // Confirm Booking
-  const confirmBooking = (id) => {
-    setBookings((prevBookings) =>
-      prevBookings.map((booking) =>
-        booking.id === id ? { ...booking, confirmed: true } : booking
-      )
-    );
+  const confirmBooking = async (id) => {
+    try {
+      const adminToken = localStorage.getItem("adminToken");
+      if (!adminToken) return setMessage("Admin token is missing.");
+
+      const response = await axios.put(
+        `http://localhost:3000/api/admin/confirm-booking/${id}`,
+        {},
+        { headers: { Authorization: `Bearer ${adminToken}` } }
+      );
+
+      if (response.status === 200) {
+        setBookings((prevBookings) =>
+          prevBookings.map((booking) =>
+            booking.id === id ? { ...booking, confirmed: true } : booking
+          )
+        );
+        setMessage("Booking confirmed successfully!");
+        setTimeout(() => setMessage(""), 3000);
+      }
+    } catch (error) {
+      console.error("Error confirming booking:", error);
+      setMessage("Error confirming booking.");
+    }
   };
 
   // Delete Booking
-  const deleteBooking = (id) => {
-    setBookings((prevBookings) => prevBookings.filter((booking) => booking.id !== id));
+  const deleteBooking = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this booking?")) return;
+
+    try {
+      const adminToken = localStorage.getItem("adminToken");
+      if (!adminToken) return setMessage("Admin token is missing.");
+
+      await axios.delete(`http://localhost:3000/api/admin/delete-booking/${id}`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+
+      setBookings((prevBookings) => prevBookings.filter((booking) => booking.id !== id));
+      setMessage("Booking deleted successfully!");
+      setTimeout(() => setMessage(""), 3000);
+    } catch (error) {
+      console.error("Error deleting booking:", error);
+      setMessage("Error deleting booking.");
+    }
   };
 
   return (
     <div className="manage-bookings">
       <h2>Manage Bookings</h2>
+
+      {message && <div className="message">{message}</div>}
+
       <table className="booking-table">
         <thead>
           <tr>
-            <th>ID</th>
-            <th>User ID</th>
-            <th>Turf ID</th>
+            <th>Turf Name</th>
+            <th>User Phone</th>
+            <th>User Email</th>
             <th>Date</th>
             <th>Time Slot</th>
             <th>Status</th>
@@ -36,23 +95,35 @@ function ManageBookings() {
           </tr>
         </thead>
         <tbody>
-          {bookings.map((booking) => (
-            <tr key={booking.id}>
-              <td>{booking.id}</td>
-              <td>{booking.user_id}</td>
-              <td>{booking.tuf_id}</td>
-              <td>{booking.date}</td>
-              <td>{booking.time_slot}</td>
-              <td>{booking.confirmed ? "✅ Confirmed" : "⏳ Pending"}</td>
-              <td>
-                {!booking.confirmed && (
-                  <button className="confirm-btn" onClick={() => confirmBooking(booking.id)}>✅ Confirm</button>
-                )}
-                <button className="delete-btn" onClick={() => deleteBooking(booking.id)}>❌ Delete</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
+  {bookings.length > 0 ? (
+    bookings.map((booking, index) => (
+      <tr key={booking._id || index}> {/* Unique key fix */}
+        <td>{booking.turfId?.name || "N/A"}</td>  {/* Extract Turf Name */}
+        <td>{booking.userPhone || "N/A"}</td>  {/* Extract User Phone */}
+        <td>{booking.userEmail || "N/A"}</td>  {/* Extract User Email */}
+        <td>{booking.date}</td>  {/* Display Date */}
+        <td>{booking.slot || "N/A"}</td>  {/* Extract Time Slot */}
+        <td>{booking.status === "confirmed" ? "✅ Confirmed" : "⏳ Pending"}</td> {/* Status */}
+        <td>
+          {booking.status === "pending" && (
+            <button className="confirm-btn" onClick={() => confirmBooking(booking._id)}>
+              ✅ Confirm
+            </button>
+          )}
+          <button className="delete-btn" onClick={() => deleteBooking(booking._id)}>
+            ❌ Delete
+          </button>
+        </td>
+      </tr>
+    ))
+  ) : (
+    <tr>
+      <td colSpan="7">No bookings found</td>
+    </tr>
+  )}
+</tbody>
+
+
       </table>
     </div>
   );

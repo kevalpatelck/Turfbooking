@@ -10,11 +10,15 @@ import AddTurfForm from './components/AddTurfForm';
 import ManageTurfs from './components/ManageTurfs';
 import ManageBookings from './components/ManageBookings';
 import ViewBookings from './components/ViewBookings';
+import Updatebox from './components/Updatebox';
+import { ToastContainer } from "react-toastify";
+
 
 function App() {
   return (
     <div >
-      
+      <ToastContainer />
+
       <BrowserRouter>
       <Routes>
         <Route path="/" element={<Adminpannel />}>
@@ -28,6 +32,7 @@ function App() {
           <Route path="manageturf" element={<ManageTurfs />} />
           <Route path="manageBookings" element={<ManageBookings />} />
           <Route path="viewbookings" element={<ViewBookings />} />
+          <Route path="/update-turf" element={<Updatebox />} />
         </Route>
       </Routes>
     </BrowserRouter>
